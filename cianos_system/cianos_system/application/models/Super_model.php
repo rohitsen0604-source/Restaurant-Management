@@ -7,7 +7,7 @@ class super_model extends CI_Model
         $this->ensure_tables_exist();
     }
 
-    private function ensure_tables_exist()
+    public function ensure_tables_exist()
     {
         static $checked = false;
         if ($checked) return;
@@ -16,33 +16,31 @@ class super_model extends CI_Model
         $conn = isset($this->db->conn_id) ? $this->db->conn_id : null;
         if (!$conn) return;
 
-        $check = @$conn->query("SHOW TABLES LIKE 'huts'");
-        if ($check && $check->num_rows > 0) {
+        $res = @$conn->query("SHOW TABLES");
+        $existing = array();
+        if ($res) {
+            while ($row = $res->fetch_array()) {
+                $existing[] = strtolower($row[0]);
+            }
+        }
+        if (in_array('huts', $existing) && in_array('users', $existing) && in_array('delivery_head', $existing) && in_array('menu', $existing)) {
             return;
         }
 
-        $sql_file = APPPATH . '../db/db_reservation.sql';
-        if (!file_exists($sql_file)) {
-            $sql_file = FCPATH . 'db/db_reservation.sql';
+        require_once __DIR__ . '/schema_installer.php';
+
+        $tables = get_app_schema_tables();
+        foreach ($tables as $createSql) {
+            @$conn->query($createSql);
         }
-        if (file_exists($sql_file)) {
-            $sql = file_get_contents($sql_file);
-            $sql = preg_replace('/--.*$/m', '', $sql);
-            $sql = preg_replace('/\/\*.*?\*\//s', '', $sql);
-            $sql = preg_replace('/CREATE TABLE `([a-zA-Z0-9_]+)`/i', 'CREATE TABLE IF NOT EXISTS `$1`', $sql);
-            $sql = preg_replace('/INSERT INTO `([a-zA-Z0-9_]+)`/i', 'INSERT IGNORE INTO `$1`', $sql);
 
-            $queries = preg_split('/;(?:\s*[\r\n]+|\s*$)/', $sql);
-            foreach ($queries as $query) {
-                $q = trim($query);
-                if (!empty($q)) {
-                    @$conn->query($q);
-                }
-            }
+        $inserts = get_app_schema_inserts();
+        foreach ($inserts as $insertSql) {
+            @$conn->query($insertSql);
+        }
 
-            if (isset($this->db->data_cache)) {
-                $this->db->data_cache = array();
-            }
+        if (isset($this->db->data_cache)) {
+            $this->db->data_cache = array();
         }
     }
 

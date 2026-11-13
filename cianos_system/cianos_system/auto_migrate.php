@@ -86,48 +86,24 @@ if (empty($missing)) {
 }
 
 echo "Missing tables detected: " . implode(', ', $missing) . "\n";
-echo "Importing schema and data from db_reservation.sql...\n";
+echo "Importing schema and seed data...\n";
 
-$sql_path = __DIR__ . '/db/db_reservation.sql';
-if (!file_exists($sql_path)) {
-	echo "Error: SQL file not found at $sql_path\n";
-	if ($is_web) echo "</pre>";
-	exit(1);
-}
+require_once __DIR__ . '/application/models/schema_installer.php';
 
-$sql_raw = file_get_contents($sql_path);
-
-// Safe parsing: Remove comment lines
-$lines = explode("\n", $sql_raw);
-$clean_sql = "";
-foreach ($lines as $line) {
-	$trimmed = trim($line);
-	if ($trimmed === '' || substr($trimmed, 0, 2) === '--' || substr($trimmed, 0, 2) === '/*') {
-		continue;
-	}
-	$clean_sql .= $line . "\n";
-}
-
-// Convert CREATE TABLE to CREATE TABLE IF NOT EXISTS and INSERT to INSERT IGNORE
-$clean_sql = preg_replace('/CREATE TABLE `([a-zA-Z0-9_]+)`/i', 'CREATE TABLE IF NOT EXISTS `$1`', $clean_sql);
-$clean_sql = preg_replace('/INSERT INTO `([a-zA-Z0-9_]+)`/i', 'INSERT IGNORE INTO `$1`', $clean_sql);
-
-// Split queries robustly by semicolon at line end
-$queries = preg_split('/;(?:\s*[\r\n]+|\s*$)/', $clean_sql);
 $executed = 0;
-$errors = 0;
+$tables = get_app_schema_tables();
+foreach ($tables as $createSql) {
+	if (@$conn->query($createSql)) {
+		$executed++;
+	} else {
+		echo "Table notice: " . $conn->error . "\n";
+	}
+}
 
-foreach ($queries as $query) {
-	$q = trim($query);
-	if (!empty($q)) {
-		if (!@$conn->query($q)) {
-			$err_no = $conn->errno;
-			if ($err_no !== 1068 && $err_no !== 1050 && $err_no !== 1060 && $err_no !== 1062) {
-				$errors++;
-			}
-		} else {
-			$executed++;
-		}
+$inserts = get_app_schema_inserts();
+foreach ($inserts as $insertSql) {
+	if (@$conn->query($insertSql)) {
+		$executed++;
 	}
 }
 
