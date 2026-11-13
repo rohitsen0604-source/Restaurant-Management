@@ -131,7 +131,7 @@ $db['default'] = array(
 	'swap_pre' => '',
 	'encrypt' => $encrypt,
 	'compress' => FALSE,
-	'stricton' => FALSE,
+	'stricton' => NULL,
 	'failover' => array(),
 	'save_queries' => TRUE
 );
