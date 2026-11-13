@@ -4,6 +4,36 @@ class super_model extends CI_Model
     public function __construct()
     {
         $this->load->database();
+        $this->ensure_tables_exist();
+    }
+
+    private function ensure_tables_exist()
+    {
+        static $checked = false;
+        if ($checked) return;
+        $checked = true;
+
+        if (!$this->db->table_exists('huts') || !$this->db->table_exists('delivery_head')) {
+            $sql_file = APPPATH . '../db/db_reservation.sql';
+            if (!file_exists($sql_file)) {
+                $sql_file = FCPATH . 'db/db_reservation.sql';
+            }
+            if (file_exists($sql_file)) {
+                $sql = file_get_contents($sql_file);
+                $sql = preg_replace('/--.*$/m', '', $sql);
+                $sql = preg_replace('/\/\*.*?\*\//s', '', $sql);
+                $sql = preg_replace('/CREATE TABLE `([a-zA-Z0-9_]+)`/i', 'CREATE TABLE IF NOT EXISTS `$1`', $sql);
+                $sql = preg_replace('/INSERT INTO `([a-zA-Z0-9_]+)`/i', 'INSERT IGNORE INTO `$1`', $sql);
+
+                $queries = preg_split('/;(?:\s*[\r\n]+|\s*$)/', $sql);
+                foreach ($queries as $query) {
+                    $q = trim($query);
+                    if (!empty($q)) {
+                        @$this->db->query($q);
+                    }
+                }
+            }
+        }
     }
 
      public function select_all($table)

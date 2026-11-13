@@ -16,6 +16,7 @@ $db_user = ci_getenv('DB_USER', 'root');
 $db_pass = ci_getenv('DB_PASS', ci_getenv('DB_PASSWORD', ''));
 $db_name = ci_getenv('DB_NAME', ci_getenv('DB_DATABASE', 'db_reservation'));
 $db_port = (int)ci_getenv('DB_PORT', 3306);
+$db_ssl  = (ci_getenv('DB_SSL') === 'true' || ci_getenv('DB_SSL') === '1');
 
 $db_url = ci_getenv('DATABASE_URL', ci_getenv('MYSQL_URL'));
 if (!empty($db_url)) {
@@ -26,6 +27,12 @@ if (!empty($db_url)) {
 		if (isset($parsed['pass'])) $db_pass = urldecode($parsed['pass']);
 		if (!empty($parsed['port'])) $db_port = (int)$parsed['port'];
 		if (!empty($parsed['path'])) $db_name = ltrim($parsed['path'], '/');
+		if (!empty($parsed['query'])) {
+			parse_str($parsed['query'], $query_params);
+			if (isset($query_params['ssl-mode']) && $query_params['ssl-mode'] !== 'DISABLED') {
+				$db_ssl = true;
+			}
+		}
 	}
 }
 
@@ -39,7 +46,13 @@ echo "Connecting to MySQL server: $db_host (Database: $db_name)...\n";
 
 $conn = mysqli_init();
 $conn->options(MYSQLI_OPT_CONNECT_TIMEOUT, 10);
-if (!@$conn->real_connect($db_host, $db_user, $db_pass, $db_name, $db_port)) {
+$client_flags = 0;
+if ($db_ssl) {
+	$conn->ssl_set(NULL, NULL, NULL, NULL, NULL);
+	$client_flags |= MYSQLI_CLIENT_SSL;
+}
+
+if (!@$conn->real_connect($db_host, $db_user, $db_pass, $db_name, $db_port, NULL, $client_flags)) {
 	echo "Error: Database connection failed: " . mysqli_connect_error() . "\n";
 	if ($is_web) echo "</pre>";
 	exit(1);
@@ -99,8 +112,8 @@ foreach ($lines as $line) {
 $clean_sql = preg_replace('/CREATE TABLE `([a-zA-Z0-9_]+)`/i', 'CREATE TABLE IF NOT EXISTS `$1`', $clean_sql);
 $clean_sql = preg_replace('/INSERT INTO `([a-zA-Z0-9_]+)`/i', 'INSERT IGNORE INTO `$1`', $clean_sql);
 
-// Split queries
-$queries = explode(";\n", $clean_sql);
+// Split queries robustly by semicolon at line end
+$queries = preg_split('/;(?:\s*[\r\n]+|\s*$)/', $clean_sql);
 $executed = 0;
 $errors = 0;
 
@@ -108,7 +121,6 @@ foreach ($queries as $query) {
 	$q = trim($query);
 	if (!empty($q)) {
 		if (!@$conn->query($q)) {
-			// Ignore common non-fatal errors like duplicate primary key or table already exists
 			$err_no = $conn->errno;
 			if ($err_no !== 1068 && $err_no !== 1050 && $err_no !== 1060 && $err_no !== 1062) {
 				$errors++;
@@ -119,7 +131,7 @@ foreach ($queries as $query) {
 	}
 }
 
-echo "Migration finished: $executed statements executed.\n";
+echo "Migration finished: $executed statements executed successfully.\n";
 
 // Verify again
 $verified_tables = array();
@@ -138,4 +150,3 @@ if ($is_web) {
 	echo "\n<a href='index.php'>Go to Website Login</a>";
 	echo "</pre>";
 }
-
