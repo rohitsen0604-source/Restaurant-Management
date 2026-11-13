@@ -1,17 +1,13 @@
 FROM php:8.0-apache
 
-# Install required system packages and PHP extensions
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libzip-dev \
-    zip \
-    unzip \
-    libpng-dev \
-    libjpeg-dev \
-    libfreetype6-dev \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j$(nproc) gd zip mysqli pdo pdo_mysql \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+# Fix Debian Bullseye archive repositories (Debian Bullseye moved to archive.debian.org)
+RUN echo "deb http://archive.debian.org/debian bullseye main contrib non-free" > /etc/apt/sources.list \
+    && echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99ignore-valid-until
+
+# Use official php-extension-installer for reliable, error-free extension builds
+COPY --from=mlocati/php-extension-installer:latest /usr/bin/install-php-extensions /usr/local/bin/
+
+RUN install-php-extensions gd zip mysqli pdo_mysql
 
 # Enable Apache modules: mod_rewrite for clean URLs, headers for security/cache headers
 RUN a2enmod rewrite headers
