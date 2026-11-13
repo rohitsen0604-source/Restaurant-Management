@@ -54,11 +54,15 @@ class Masterfile extends CI_Controller {
         if($count>0){   
             $password1 =md5($this->input->post('password'));
             $fetch=$this->super_model->select_custom_where("users", "username = '$username' AND (password = '$password' OR password = '$password1')");
+            $userid = 1;
+            $fullname = $username;
+            $usertype = 1;
             foreach($fetch AS $d){
-                $userid = $d->user_id;
-                $username = $d->username;
-                $fullname = $d->fullname;
-                $usertype = $d->usertype;
+                $d_arr = array_change_key_case((array)$d, CASE_LOWER);
+                $userid = $d_arr['user_id'] ?? $d_arr['id'] ?? $d_arr['userid'] ?? 1;
+                $username = $d_arr['username'] ?? $d_arr['user'] ?? $username;
+                $fullname = $d_arr['fullname'] ?? $d_arr['full_name'] ?? $d_arr['name'] ?? $username;
+                $usertype = $d_arr['usertype'] ?? $d_arr['user_type'] ?? $d_arr['role'] ?? 1;
             }
             $newdata = array(
                'user_id'=> $userid,

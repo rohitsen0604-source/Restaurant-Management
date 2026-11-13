@@ -60,11 +60,17 @@ class Users extends CI_Controller {
         if($count>0){   
             $password1 =md5($this->input->post('password'));
             $fetch=$this->super_model->select_custom_where("registration", "email = '$email' AND (password = '$password' OR password = '$password1')");
+            $register_id = 1;
+            $fullname = $email;
             foreach($fetch AS $d){
-                $complete_name = $d->fname." ".$d->mname." ".$d->lname; 
-                $register_id = $d->register_id;
-                $email = $d->email;
-                $fullname = $complete_name;
+                $d_arr = array_change_key_case((array)$d, CASE_LOWER);
+                $register_id = $d_arr['register_id'] ?? $d_arr['id'] ?? 1;
+                $email = $d_arr['email'] ?? $email;
+                $fname = $d_arr['fname'] ?? '';
+                $mname = $d_arr['mname'] ?? '';
+                $lname = $d_arr['lname'] ?? '';
+                $complete_name = trim("$fname $mname $lname");
+                $fullname = !empty($complete_name) ? $complete_name : ($d_arr['name'] ?? $d_arr['fullname'] ?? $email);
             }
             $newdata = array(
                'user_id'=> $register_id,
