@@ -73,12 +73,42 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 $active_group = 'default';
 $query_builder = TRUE;
 
+// Support individual environment variables
+$db_host = getenv('DB_HOST') ?: 'localhost';
+$db_user = getenv('DB_USER') ?: 'root';
+$db_pass = getenv('DB_PASS') !== false ? getenv('DB_PASS') : (getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '');
+$db_name = getenv('DB_NAME') ?: (getenv('DB_DATABASE') ?: 'db_reservation');
+$db_port = getenv('DB_PORT') ? (int)getenv('DB_PORT') : 3306;
+$db_ssl  = (getenv('DB_SSL') === 'true' || getenv('DB_SSL') === '1');
+
+// Support full URL like DATABASE_URL or MYSQL_URL (mysql://user:pass@host:port/dbname)
+$db_url = getenv('DATABASE_URL') ?: getenv('MYSQL_URL');
+if (!empty($db_url)) {
+	$parsed = parse_url($db_url);
+	if ($parsed) {
+		if (!empty($parsed['host'])) $db_host = $parsed['host'];
+		if (!empty($parsed['user'])) $db_user = urldecode($parsed['user']);
+		if (isset($parsed['pass'])) $db_pass = urldecode($parsed['pass']);
+		if (!empty($parsed['port'])) $db_port = (int)$parsed['port'];
+		if (!empty($parsed['path'])) $db_name = ltrim($parsed['path'], '/');
+		if (!empty($parsed['query'])) {
+			parse_str($parsed['query'], $query_params);
+			if (isset($query_params['ssl-mode']) && $query_params['ssl-mode'] !== 'DISABLED') {
+				$db_ssl = true;
+			}
+		}
+	}
+}
+
+$encrypt = $db_ssl ? array('ssl_verify' => FALSE) : FALSE;
+
 $db['default'] = array(
 	'dsn'	=> '',
-	'hostname' => 'localhost',
-	'username' => 'root',
-	'password' => '',
-	'database' => 'db_reservation',
+	'hostname' => $db_host,
+	'username' => $db_user,
+	'password' => $db_pass,
+	'database' => $db_name,
+	'port'     => $db_port,
 	'dbdriver' => 'mysqli',
 	'dbprefix' => '',
 	'pconnect' => FALSE,
@@ -88,7 +118,7 @@ $db['default'] = array(
 	'char_set' => 'utf8',
 	'dbcollat' => 'utf8_general_ci',
 	'swap_pre' => '',
-	'encrypt' => FALSE,
+	'encrypt' => $encrypt,
 	'compress' => FALSE,
 	'stricton' => FALSE,
 	'failover' => array(),

@@ -23,7 +23,17 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 | a PHP script and you can easily do that on your own.
 |
 */
-$config['base_url'] = 'http://localhost/cianos_system';
+if (getenv('BASE_URL')) {
+	$config['base_url'] = rtrim(getenv('BASE_URL'), '/') . '/';
+} elseif (isset($_SERVER['HTTP_HOST'])) {
+	$is_https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+		|| (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+		|| (isset($_SERVER['HTTP_FRONT_END_HTTPS']) && $_SERVER['HTTP_FRONT_END_HTTPS'] === 'on');
+	$protocol = $is_https ? 'https://' : 'http://';
+	$config['base_url'] = $protocol . $_SERVER['HTTP_HOST'] . '/';
+} else {
+	$config['base_url'] = 'http://localhost/cianos_system/';
+}
 
 /*
 |--------------------------------------------------------------------------
@@ -324,7 +334,7 @@ $config['cache_query_string'] = FALSE;
 | https://codeigniter.com/user_guide/libraries/encryption.html
 |
 */
-$config['encryption_key'] = '';
+$config['encryption_key'] = getenv('ENCRYPTION_KEY') ?: 'restaurant_mgmt_secret_key_ci3_2026';
 
 /*
 |--------------------------------------------------------------------------
