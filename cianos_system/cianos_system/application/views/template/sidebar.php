@@ -121,7 +121,10 @@
                             <span class="pcoded-micon"><i class="ti-upload"></i></span>
                             <span class="pcoded-mtext" data-i18n="nav.form-components.main">Delivery List 
                             <?php 
-                            $_count = $this->db->get_where("delivery_head",array("delivered"=>0))->num_rows();
+                            $_count = 0;
+                            if ($this->db->table_exists("delivery_head")) {
+                                $_count = $this->db->get_where("delivery_head",array("delivered"=>0))->num_rows();
+                            }
                             ?>
                             <span class="label label-danger" id="delivery_count"><?php echo $_count ?></span></span>
                             <span class="pcoded-mcaret"></span>

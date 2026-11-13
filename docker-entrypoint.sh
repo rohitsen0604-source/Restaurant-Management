@@ -19,5 +19,8 @@ mkdir -p /var/www/html/uploads/excel /var/www/html/application/cache /var/www/ht
 chown -R www-data:www-data /var/www/html/uploads /var/www/html/application/cache /var/www/html/application/logs
 chmod -R 775 /var/www/html/uploads /var/www/html/application/cache /var/www/html/application/logs
 
+echo "Running database auto-migration check..."
+php /var/www/html/auto_migrate.php || true
+
 echo "Starting Apache on port ${PORT}..."
 exec apache2-foreground
