@@ -72,7 +72,7 @@ switch (ENVIRONMENT)
 
 	case 'testing':
 	case 'production':
-		ini_set('display_errors', 0);
+		ini_set('display_errors', (isset($_SERVER['CI_ENV']) && $_SERVER['CI_ENV'] === 'production' && empty($_SERVER['SHOW_ERRORS'])) ? 0 : 1);
 		if (version_compare(PHP_VERSION, '5.3', '>='))
 		{
 			error_reporting(E_ALL & ~E_NOTICE & ~E_DEPRECATED & ~E_STRICT & ~E_USER_NOTICE & ~E_USER_DEPRECATED);

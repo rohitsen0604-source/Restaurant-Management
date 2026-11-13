@@ -24,7 +24,8 @@ class Reservation extends CI_Controller {
 	 * @see https://codeigniter.com/user_guide/general/urls.html
 	 */
 
-	  function arrayToObject($array){
+	  if (!function_exists('arrayToObject')) {
+	    function arrayToObject($array){
             if(!is_array($array)) { return $array; }
             $object = new stdClass();
             if (is_array($array) && count($array) > 0) {
@@ -38,6 +39,7 @@ class Reservation extends CI_Controller {
                 return false;
             }
         }
+	  }
 
 	}
 	public function calendar_data(){

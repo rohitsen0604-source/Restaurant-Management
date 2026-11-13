@@ -73,16 +73,26 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 $active_group = 'default';
 $query_builder = TRUE;
 
-// Support individual environment variables
-$db_host = getenv('DB_HOST') ?: 'localhost';
-$db_user = getenv('DB_USER') ?: 'root';
-$db_pass = getenv('DB_PASS') !== false ? getenv('DB_PASS') : (getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '');
-$db_name = getenv('DB_NAME') ?: (getenv('DB_DATABASE') ?: 'db_reservation');
-$db_port = getenv('DB_PORT') ? (int)getenv('DB_PORT') : 3306;
-$db_ssl  = (getenv('DB_SSL') === 'true' || getenv('DB_SSL') === '1');
+if (!function_exists('ci_getenv')) {
+	function ci_getenv($key, $default = null) {
+		if (isset($_ENV[$key]) && $_ENV[$key] !== '') return $_ENV[$key];
+		if (isset($_SERVER[$key]) && $_SERVER[$key] !== '') return $_SERVER[$key];
+		$val = getenv($key);
+		if ($val !== false && $val !== '') return $val;
+		return $default;
+	}
+}
+
+// Support individual environment variables from $_ENV, $_SERVER or getenv
+$db_host = ci_getenv('DB_HOST', 'localhost');
+$db_user = ci_getenv('DB_USER', 'root');
+$db_pass = ci_getenv('DB_PASS', ci_getenv('DB_PASSWORD', ''));
+$db_name = ci_getenv('DB_NAME', ci_getenv('DB_DATABASE', 'db_reservation'));
+$db_port = (int)ci_getenv('DB_PORT', 3306);
+$db_ssl  = (ci_getenv('DB_SSL') === 'true' || ci_getenv('DB_SSL') === '1');
 
 // Support full URL like DATABASE_URL or MYSQL_URL (mysql://user:pass@host:port/dbname)
-$db_url = getenv('DATABASE_URL') ?: getenv('MYSQL_URL');
+$db_url = ci_getenv('DATABASE_URL', ci_getenv('MYSQL_URL'));
 if (!empty($db_url)) {
 	$parsed = parse_url($db_url);
 	if ($parsed) {
@@ -101,6 +111,7 @@ if (!empty($db_url)) {
 }
 
 $encrypt = $db_ssl ? array('ssl_verify' => FALSE) : FALSE;
+$db_debug = (ci_getenv('DB_DEBUG') === 'false' || ci_getenv('DB_DEBUG') === '0') ? FALSE : TRUE;
 
 $db['default'] = array(
 	'dsn'	=> '',
@@ -112,7 +123,7 @@ $db['default'] = array(
 	'dbdriver' => 'mysqli',
 	'dbprefix' => '',
 	'pconnect' => FALSE,
-	'db_debug' => (ENVIRONMENT !== 'production'),
+	'db_debug' => $db_debug,
 	'cache_on' => FALSE,
 	'cachedir' => '',
 	'char_set' => 'utf8',
